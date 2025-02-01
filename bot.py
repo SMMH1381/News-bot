@@ -33,8 +33,14 @@ def parse_datetime(datetime_str):
     """
     تبدیل رشته تاریخ (ISO 8601) به شیء datetime در منطقه زمانی تهران.
     """
-    dt = datetime.fromisoformat(datetime_str)
-    return dt.astimezone(tehran_tz)
+    try:
+        dt = datetime.fromisoformat(datetime_str)
+        result = dt.astimezone(tehran_tz)
+        print(f"[INFO] Parsed datetime: {result}")
+        return result
+    except Exception as e:
+        print(f"[ERROR] در parse_datetime: {e}")
+        return None
 
 def scrape_channel(channel_username, required_hashtag):
     """
@@ -45,43 +51,63 @@ def scrape_channel(channel_username, required_hashtag):
     در غیر این صورت None برگردانده می‌شود.
     """
     url = f"https://t.me/s/{channel_username.strip('@')}"
-    response = requests.get(url)
+    print(f"[INFO] در حال اسکرپ کردن کانال: {url}")
+    try:
+        response = requests.get(url)
+    except Exception as e:
+        print(f"[ERROR] درخواست به {url} با خطا مواجه شد: {e}")
+        return None
+
     if response.status_code != 200:
+        print(f"[ERROR] دریافت صفحه {url} با وضعیت {response.status_code} مواجه شد.")
         return None
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # یافتن تمامی پست‌ها؛ ساختار HTML صفحه کانال ممکن است تغییر کند
     posts = soup.find_all("div", class_="tgme_widget_message_wrap")
+    print(f"[INFO] تعداد پست‌های یافت شده: {len(posts)}")
     for post in posts:
-        # استخراج زمان ارسال پست
         time_tag = post.find("time")
         if time_tag and time_tag.has_attr("datetime"):
             post_time = parse_datetime(time_tag["datetime"])
+            if post_time is None:
+                continue
             if not (start_time <= post_time <= end_time):
+                print(f"[DEBUG] پست با زمان {post_time} خارج از بازه مشخص شده است.")
                 continue
         else:
+            print("[DEBUG] پست فاقد تگ زمان است.")
             continue
 
-        # بررسی وجود هشتگ مورد نظر در کپشن
         caption_div = post.find("div", class_="tgme_widget_message_text")
         caption_text = caption_div.get_text() if caption_div else ""
+        print(f"[DEBUG] کپشن پست: {caption_text}")
         if required_hashtag not in caption_text:
+            print(f"[DEBUG] هشتگ {required_hashtag} در کپشن موجود نیست.")
             continue
 
-        # استخراج لینک تصویر؛ بررسی المان عکس
         photo_wrap = post.find("a", class_="tgme_widget_message_photo_wrap")
         if photo_wrap and photo_wrap.has_attr("style"):
             style = photo_wrap["style"]
             match = re.search(r"url\('(.*?)'\)", style)
             if match:
                 image_url = match.group(1)
-                # دانلود تصویر
-                img_response = requests.get(image_url)
+                print(f"[INFO] آدرس تصویر پیدا شده: {image_url}")
+                try:
+                    img_response = requests.get(image_url)
+                except Exception as e:
+                    print(f"[ERROR] دانلود تصویر با خطا مواجه شد: {e}")
+                    continue
                 if img_response.status_code == 200:
                     file_path = f"{channel_username.strip('@')}_image.jpg"
-                    with open(file_path, "wb") as f:
-                        f.write(img_response.content)
-                    return file_path
+                    try:
+                        with open(file_path, "wb") as f:
+                            f.write(img_response.content)
+                        print(f"[INFO] تصویر دانلود شده در: {file_path}")
+                        return file_path
+                    except Exception as e:
+                        print(f"[ERROR] ذخیره تصویر با خطا مواجه شد: {e}")
+                        return None
+    print("[INFO] هیچ پستی با مشخصات داده شده یافت نشد.")
     return None
 
 def composite_image(base_image_path, overlay_image_path):
@@ -91,39 +117,44 @@ def composite_image(base_image_path, overlay_image_path):
     نتیجه در فایلی به نام "final_<base_image_name>" ذخیره می‌شود.
     """
     try:
+        print(f"[INFO] ترکیب تصویر {base_image_path} با overlay {overlay_image_path}")
         base_img = Image.open(base_image_path).convert("RGBA")
         overlay_img = Image.open(overlay_image_path).convert("RGBA")
-        # تغییر اندازه overlay در صورت عدم تطابق ابعاد
         if overlay_img.size != base_img.size:
+            print(f"[DEBUG] تغییر اندازه overlay از {overlay_img.size} به {base_img.size}")
             overlay_img = overlay_img.resize(base_img.size)
-        # ترکیب دو تصویر
         final_img = Image.alpha_composite(base_img, overlay_img)
-        # تبدیل به RGB جهت ذخیره در فرمت JPEG
         final_img = final_img.convert("RGB")
         final_image_path = f"final_{os.path.basename(base_image_path)}"
         final_img.save(final_image_path)
+        print(f"[INFO] تصویر نهایی ذخیره شد: {final_image_path}")
         return final_image_path
     except Exception as e:
-        print(f"Error during compositing image: {e}")
-        return base_image_path  # در صورت بروز خطا، تصویر اصلی را برمی‌گرداند
+        print(f"[ERROR] در composite_image: {e}")
+        return base_image_path
 
 async def send_photo(image_path):
     """
     ارسال یک تصویر به کانال مقصد با استفاده از متد send_photo.
     از async context manager برای مدیریت Bot استفاده می‌شود.
     """
-    async with Bot(token=TELEGRAM_BOT_TOKEN) as bot:
-        with open(image_path, "rb") as photo_file:
-            await bot.send_photo(chat_id=TARGET_CHANNEL, photo=photo_file, caption=TARGET_CAPTION)
+    print(f"[INFO] آماده ارسال تصویر: {image_path} به کانال {TARGET_CHANNEL}")
+    try:
+        async with Bot(token=TELEGRAM_BOT_TOKEN) as bot:
+            with open(image_path, "rb") as photo_file:
+                await bot.send_photo(chat_id=TARGET_CHANNEL, photo=photo_file, caption=TARGET_CAPTION)
+        print("[INFO] تصویر با موفقیت ارسال شد.")
+    except Exception as e:
+        print(f"[ERROR] ارسال تصویر با خطا مواجه شد: {e}")
 
 async def main():
-    # پردازش فقط کانال مبدا اول با هشتگ مربوطه
+    print("[INFO] اجرای برنامه آغاز شد.")
     image_path = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG)
     if image_path:
-        # ترکیب تصویر دانلود شده با overlay
         final_image_path = composite_image(image_path, OVERLAY_IMAGE_PATH)
         await send_photo(final_image_path)
-    # در صورت عدم یافتن تصویر، هیچ عملی انجام نخواهد شد.
+    else:
+        print("[INFO] تصویر مورد نظر پیدا نشد؛ بنابراین عملی انجام نخواهد شد.")
 
 if __name__ == "__main__":
     asyncio.run(main())
