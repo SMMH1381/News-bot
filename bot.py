@@ -26,7 +26,9 @@ tehran_tz = pytz.timezone("Asia/Tehran")
 now_tehran = datetime.now(tehran_tz)
 today_date = now_tehran.date()
 yesterday_date = today_date - timedelta(days=1)
-start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(22, 0)))
+# زمان شروع جستجو ثابت: ساعت 22:00 روز قبل
+base_start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(22, 0)))
+# متغیر end_time دیگر به صورت ثابت تعریف نمی‌شود.
 
 def parse_datetime(datetime_str):
     """
@@ -41,11 +43,12 @@ def parse_datetime(datetime_str):
         print(f"[ERROR] در parse_datetime: {e}")
         return None
 
-def scrape_channel(channel_username, required_hashtag):
+def scrape_channel(channel_username, required_hashtag, start_time_range, end_time_range):
     """
     وب‌اسکرپینگ یک کانال public تلگرام برای یافتن اولین پستی در بازه زمانی مشخص
     که در کپشنش هشتگ مورد نظر (required_hashtag) وجود دارد.
     
+    در این نسخه، بازه زمانی از start_time_range تا end_time_range تعریف شده است.
     در صورت یافتن، تصویر پست دانلود شده و مسیر فایل تصویر برگردانده می‌شود.
     در غیر این صورت None برگردانده می‌شود.
     """
@@ -70,7 +73,7 @@ def scrape_channel(channel_username, required_hashtag):
             post_time = parse_datetime(time_tag["datetime"])
             if post_time is None:
                 continue
-            if not (start_time <= post_time <= end_time):
+            if not (start_time_range <= post_time <= end_time_range):
                 print(f"[DEBUG] پست با زمان {post_time} خارج از بازه مشخص شده است.")
                 continue
         else:
@@ -121,12 +124,9 @@ def composite_image(base_image_path, overlay_image_path):
         overlay_img = Image.open(overlay_image_path).convert("RGBA")
         if overlay_img.size != base_img.size:
             print(f"[DEBUG] تغییر اندازه overlay از {overlay_img.size} به {base_img.size}")
-            # استفاده از فیلتر LANCZOS برای کیفیت بهتر در تغییر اندازه
             overlay_img = overlay_img.resize(base_img.size, resample=Image.LANCZOS)
         final_img = Image.alpha_composite(base_img, overlay_img)
-        # تعیین نام فایل نهایی با پسوند png
         final_image_path = f"final_{os.path.splitext(os.path.basename(base_image_path))[0]}.png"
-        # ذخیره تصویر نهایی به صورت PNG (بدون فشرده‌سازی اتلافی)
         final_img.save(final_image_path, format="PNG", optimize=True)
         print(f"[INFO] تصویر نهایی ذخیره شد: {final_image_path}")
         return final_image_path
@@ -150,7 +150,10 @@ async def send_photo(image_path):
 
 async def main():
     print("[INFO] اجرای برنامه آغاز شد.")
-    image_path = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG)
+    # محاسبه زمان پایان بازه به عنوان لحظه اجرای کد
+    current_time = datetime.now(tehran_tz)
+    print(f"[INFO] بازه جستجو: از {base_start_time} تا {current_time}")
+    image_path = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG, base_start_time, current_time)
     if image_path:
         final_image_path = composite_image(image_path, OVERLAY_IMAGE_PATH)
         await send_photo(final_image_path)
