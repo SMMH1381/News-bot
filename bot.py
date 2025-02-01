@@ -129,7 +129,7 @@ def composite_image(base_image_path, overlay_image_path):
         final_img = final_img.convert("RGB")
         final_image_path = f"final_{os.path.basename(base_image_path)}"
         # ذخیره تصویر با کیفیت بالا و بهینه‌سازی
-        final_img.save(final_image_path, quality=100, optimize=True)
+        final_img.save(final_image_path.replace('.jpg', '.png'))
         print(f"[INFO] تصویر نهایی ذخیره شد: {final_image_path}")
         return final_image_path
     except Exception as e:
