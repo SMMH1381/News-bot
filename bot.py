@@ -93,11 +93,13 @@ def composite_image(base_image_path, overlay_image_path):
     try:
         base_img = Image.open(base_image_path).convert("RGBA")
         overlay_img = Image.open(overlay_image_path).convert("RGBA")
-        # در صورت عدم تطابق ابعاد، تغییر اندازه overlay به ابعاد base_img
+        # تغییر اندازه overlay در صورت عدم تطابق ابعاد
         if overlay_img.size != base_img.size:
             overlay_img = overlay_img.resize(base_img.size)
         # ترکیب دو تصویر
         final_img = Image.alpha_composite(base_img, overlay_img)
+        # تبدیل به RGB جهت ذخیره در فرمت JPEG
+        final_img = final_img.convert("RGB")
         final_image_path = f"final_{os.path.basename(base_image_path)}"
         final_img.save(final_image_path)
         return final_image_path
@@ -108,10 +110,11 @@ def composite_image(base_image_path, overlay_image_path):
 async def send_photo(image_path):
     """
     ارسال یک تصویر به کانال مقصد با استفاده از متد send_photo.
+    از async context manager برای مدیریت Bot استفاده می‌شود.
     """
-    bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    with open(image_path, "rb") as photo_file:
-        await bot.send_photo(chat_id=TARGET_CHANNEL, photo=photo_file, caption=TARGET_CAPTION)
+    async with Bot(token=TELEGRAM_BOT_TOKEN) as bot:
+        with open(image_path, "rb") as photo_file:
+            await bot.send_photo(chat_id=TARGET_CHANNEL, photo=photo_file, caption=TARGET_CAPTION)
 
 async def main():
     # پردازش فقط کانال مبدا اول با هشتگ مربوطه
