@@ -9,7 +9,8 @@ import pytz
 from telegram import InputMediaPhoto, Bot
 
 # === تنظیمات ثابت ===
-FIXED_HASHTAG = "#YourHashtag"         # هشتگ ثابت؛ به مقدار دلخواه تغییر دهید
+SOURCE1_HASHTAG = "#Hashtag1"         # هشتگ ثابت برای کانال مبدا اول
+SOURCE2_HASHTAG = "#Hashtag2"         # هشتگ ثابت برای کانال مبدا دوم
 TARGET_CAPTION = "کپشن دلخواه شما"     # کپشن دلخواه برای ارسال در کانال مقصد
 
 # === دریافت متغیرهای محیطی (secrets) ===
@@ -34,10 +35,10 @@ def parse_datetime(datetime_str):
     dt = datetime.fromisoformat(datetime_str)
     return dt.astimezone(tehran_tz)
 
-def scrape_channel(channel_username):
+def scrape_channel(channel_username, required_hashtag):
     """
     وب‌اسکرپینگ یک کانال public تلگرام برای یافتن اولین پستی در بازه زمانی مشخص
-    که در کپشنش هشتگ ثابت وجود دارد.
+    که در کپشنش هشتگ مورد نظر (required_hashtag) وجود دارد.
     
     در صورت یافتن، تصویر پست دانلود شده و مسیر فایل تصویر برگردانده می‌شود.
     در غیر این صورت None برگردانده می‌شود.
@@ -60,10 +61,10 @@ def scrape_channel(channel_username):
         else:
             continue
 
-        # بررسی وجود هشتگ ثابت در کپشن
+        # بررسی وجود هشتگ مورد نظر در کپشن
         caption_div = post.find("div", class_="tgme_widget_message_text")
         caption_text = caption_div.get_text() if caption_div else ""
-        if FIXED_HASHTAG not in caption_text:
+        if required_hashtag not in caption_text:
             continue
 
         # استخراج لینک تصویر؛ بررسی المان عکس
@@ -91,7 +92,6 @@ async def send_group_media(image_paths):
     media = []
     # اگر حداقل یک تصویر موجود باشد، کپشن به اولین عکس اضافه می‌شود
     for idx, path in enumerate(image_paths):
-        # باز کردن فایل‌ها؛ دقت کنید که این فایل‌ها پس از ارسال توسط ربات بسته می‌شوند.
         file_obj = open(path, "rb")
         if idx == 0:
             media.append(InputMediaPhoto(file_obj, caption=TARGET_CAPTION))
@@ -108,13 +108,17 @@ async def send_group_media(image_paths):
 
 async def main():
     image_paths = []
-    # پردازش هر دو کانال منبع
-    for channel in [SOURCE_CHANNEL_1, SOURCE_CHANNEL_2]:
-        path = scrape_channel(channel)
-        if path:
-            image_paths.append(path)
+    # پردازش کانال مبدا اول با هشتگ مربوطه
+    path1 = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG)
+    if path1:
+        image_paths.append(path1)
+    # پردازش کانال مبدا دوم با هشتگ مربوطه
+    path2 = scrape_channel(SOURCE_CHANNEL_2, SOURCE2_HASHTAG)
+    if path2:
+        image_paths.append(path2)
     # حتی اگر تنها یک تصویر موجود باشد، عملیات ارسال ادامه می‌یابد.
-    await send_group_media(image_paths)
+    if image_paths:
+        await send_group_media(image_paths)
 
 if __name__ == "__main__":
     asyncio.run(main())
