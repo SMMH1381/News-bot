@@ -27,7 +27,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           SOURCE_CHANNEL_1: ${{ secrets.SOURCE_CHANNEL_1 }}
-          SOURCE_CHANNEL_2: ${{ secrets.SOURCE_CHANNEL_2 }}
           TARGET_CHANNEL: ${{ secrets.TARGET_CHANNEL }}
         run: |
           python bot.py
