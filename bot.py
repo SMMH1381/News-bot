@@ -114,20 +114,30 @@ def scrape_channel(channel_username, required_hashtag):
 def composite_image(base_image_path, overlay_image_path):
     """
     ترکیب تصویر دانلود شده (base_image) با تصویر overlay (PNG) که شامل بخش‌های transparent است.
-    تصویر overlay در صورت نیاز به اندازه‌ی base_image تغییر اندازه داده می‌شود.
-    نتیجه در فایلی به نام "final_<base_image_name>" ذخیره می‌شود.
+    در صورت نیاز، overlay به اندازه base_image تغییر اندازه داده می‌شود (با استفاده از فیلتر LANCZOS برای بهترین کیفیت).
+    ترکیب نهایی با استفاده از متد paste و mask انجام می‌شود تا بخش‌های شفاف به درستی مدیریت شوند.
+    تصویر نهایی به فرمت PNG (که بدون اتلاف کیفیت است) ذخیره می‌شود.
     """
     try:
         print(f"[INFO] ترکیب تصویر {base_image_path} با overlay {overlay_image_path}")
+        # باز کردن تصاویر در حالت RGBA
         base_img = Image.open(base_image_path).convert("RGBA")
         overlay_img = Image.open(overlay_image_path).convert("RGBA")
+        
+        # تغییر اندازه overlay در صورت عدم تطابق ابعاد با استفاده از فیلتر LANCZOS برای حفظ کیفیت
         if overlay_img.size != base_img.size:
             print(f"[DEBUG] تغییر اندازه overlay از {overlay_img.size} به {base_img.size}")
-            overlay_img = overlay_img.resize(base_img.size)
-        final_img = Image.alpha_composite(base_img, overlay_img)
-        final_img = final_img.convert("RGB")
-        final_image_path = f"final_{os.path.basename(base_image_path)}"
-        final_img.save(final_image_path)
+            overlay_img = overlay_img.resize(base_img.size, resample=Image.LANCZOS)
+        
+        # ترکیب تصاویر با استفاده از متد paste و mask (برای حفظ کیفیت و شفافیت)
+        final_img = base_img.copy()
+        final_img.paste(overlay_img, (0, 0), overlay_img)
+        
+        # تعیین نام فایل نهایی با پسوند PNG (ذخیره بدون اتلاف کیفیت)
+        final_image_path = f"final_{os.path.splitext(os.path.basename(base_image_path))[0]}.png"
+        
+        # ذخیره تصویر نهایی به صورت PNG (که بدون فشرده‌سازی اتلافی است)
+        final_img.save(final_image_path, format="PNG", optimize=True)
         print(f"[INFO] تصویر نهایی ذخیره شد: {final_image_path}")
         return final_image_path
     except Exception as e:
