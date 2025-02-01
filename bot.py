@@ -115,7 +115,7 @@ def composite_image(base_image_path, overlay_image_path):
     """
     ترکیب تصویر دانلود شده (base_image) با تصویر overlay (PNG) که شامل بخش‌های transparent است.
     تصویر overlay در صورت نیاز به اندازه‌ی base_image تغییر اندازه داده می‌شود.
-    نتیجه در فایلی به نام "final_<base_image_name>" ذخیره می‌شود.
+    نتیجه در فایلی به نام "final_<base_image_name>.png" ذخیره می‌شود.
     """
     try:
         print(f"[INFO] ترکیب تصویر {base_image_path} با overlay {overlay_image_path}")
@@ -126,10 +126,10 @@ def composite_image(base_image_path, overlay_image_path):
             # استفاده از فیلتر LANCZOS برای کیفیت بهتر در تغییر اندازه
             overlay_img = overlay_img.resize(base_img.size, resample=Image.LANCZOS)
         final_img = Image.alpha_composite(base_img, overlay_img)
-        final_img = final_img.convert("RGB")
-        final_image_path = f"final_{os.path.basename(base_image_path)}"
-        # ذخیره تصویر با کیفیت بالا و بهینه‌سازی
-        final_img.save(final_image_path.replace('.jpg', '.png'))
+        # تعیین نام فایل نهایی با پسوند png
+        final_image_path = f"final_{os.path.splitext(os.path.basename(base_image_path))[0]}.png"
+        # ذخیره تصویر نهایی به صورت PNG (بدون فشرده‌سازی اتلافی)
+        final_img.save(final_image_path, format="PNG", optimize=True)
         print(f"[INFO] تصویر نهایی ذخیره شد: {final_image_path}")
         return final_image_path
     except Exception as e:
