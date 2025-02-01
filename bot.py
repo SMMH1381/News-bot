@@ -27,7 +27,8 @@ now_tehran = datetime.now(tehran_tz)
 today_date = now_tehran.date()
 yesterday_date = today_date - timedelta(days=1)
 start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(22, 0)))
-end_time = tehran_tz.localize(datetime.combine(today_date, time(1, 0)))
+# تغییر پایان بازه به 00:01 امروز (به وقت تهران)
+end_time = tehran_tz.localize(datetime.combine(today_date, time(0, 1)))
 
 def parse_datetime(datetime_str):
     """
