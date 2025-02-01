@@ -9,9 +9,9 @@ import pytz
 from telegram import InputMediaPhoto, Bot
 
 # === تنظیمات ثابت ===
-SOURCE1_HASHTAG = "#Hashtag1"         # هشتگ ثابت برای کانال مبدا اول
-SOURCE2_HASHTAG = "#Hashtag2"         # هشتگ ثابت برای کانال مبدا دوم
-TARGET_CAPTION = "کپشن دلخواه شما"     # کپشن دلخواه برای ارسال در کانال مقصد
+SOURCE1_HASHTAG = "#خبرنامه_افسران"
+SOURCE2_HASHTAG = "#بیسیم_نامه"
+TARGET_CAPTION = "♨️ امروز در ایران و جهان چه گذشت؟\nمنتخب مهم‌ترین اخبار ۲۴ ساعت گذشته\n\nبرای دسترسی به شماره‌های قبلی این خبرنامه، هشتگ زیر را لمس کنید:\n#خبرنامه@SumsTweetMD"
 
 # === دریافت متغیرهای محیطی (secrets) ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
