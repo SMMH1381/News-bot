@@ -6,24 +6,21 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, time
 import pytz
 
-from telegram import InputMediaPhoto, Bot
+from telegram import Bot
 
 # === تنظیمات ثابت ===
 SOURCE1_HASHTAG = "#خبرنامه_افسران"
-SOURCE2_HASHTAG = "#بیسیم_نامه"
 TARGET_CAPTION = "♨️ امروز در ایران و جهان چه گذشت؟\nمنتخب مهم‌ترین اخبار ۲۴ ساعت گذشته\n\nبرای دسترسی به شماره‌های قبلی این خبرنامه، هشتگ زیر را لمس کنید:\n#خبرنامه@SumsTweetMD"
 
 # === دریافت متغیرهای محیطی (secrets) ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SOURCE_CHANNEL_1 = os.getenv("SOURCE_CHANNEL_1")
-SOURCE_CHANNEL_2 = os.getenv("SOURCE_CHANNEL_2")
 TARGET_CHANNEL = os.getenv("TARGET_CHANNEL")
 
 # === تنظیم منطقه زمانی تهران ===
 tehran_tz = pytz.timezone("Asia/Tehran")
 now_tehran = datetime.now(tehran_tz)
 today_date = now_tehran.date()
-# تعریف بازه زمانی: از 22:00 روز قبل تا 01:00 امروز (همه به وقت تهران)
 yesterday_date = today_date - timedelta(days=1)
 start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(22, 0)))
 end_time = tehran_tz.localize(datetime.combine(today_date, time(1, 0)))
@@ -83,42 +80,19 @@ def scrape_channel(channel_username, required_hashtag):
                     return file_path
     return None
 
-async def send_group_media(image_paths):
+async def send_photo(image_path):
     """
-    ارسال تصاویر موجود (یکی یا هر دو) به صورت گروهی (media group) به کانال مقصد.
-    در صورتی که هر دو تصویر موجود باشند، تنها روی اولین عکس کپشن اعمال می‌شود.
+    ارسال یک تصویر به کانال مقصد با استفاده از متد send_photo.
     """
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
-    media = []
-    # اگر حداقل یک تصویر موجود باشد، کپشن به اولین عکس اضافه می‌شود
-    for idx, path in enumerate(image_paths):
-        file_obj = open(path, "rb")
-        if idx == 0:
-            media.append(InputMediaPhoto(file_obj, caption=TARGET_CAPTION))
-        else:
-            media.append(InputMediaPhoto(file_obj))
-    if media:
-        await bot.send_media_group(chat_id=TARGET_CHANNEL, media=media)
-    # بستن فایل‌های باز شده (در صورت لزوم)
-    for item in media:
-        try:
-            item.media.close()
-        except Exception:
-            pass
+    await bot.send_photo(chat_id=TARGET_CHANNEL, photo=open(image_path, "rb"), caption=TARGET_CAPTION)
 
 async def main():
-    image_paths = []
-    # پردازش کانال مبدا اول با هشتگ مربوطه
-    path1 = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG)
-    if path1:
-        image_paths.append(path1)
-    # پردازش کانال مبدا دوم با هشتگ مربوطه
-    path2 = scrape_channel(SOURCE_CHANNEL_2, SOURCE2_HASHTAG)
-    if path2:
-        image_paths.append(path2)
-    # حتی اگر تنها یک تصویر موجود باشد، عملیات ارسال ادامه می‌یابد.
-    if image_paths:
-        await send_group_media(image_paths)
+    # پردازش فقط کانال مبدا اول با هشتگ مربوطه
+    image_path = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG)
+    if image_path:
+        await send_photo(image_path)
+    # در صورت عدم یافتن تصویر، هیچ عملی انجام نخواهد شد.
 
 if __name__ == "__main__":
     asyncio.run(main())
