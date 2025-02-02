@@ -128,7 +128,8 @@ def composite_image(base_image_path, overlay_image_path):
             overlay_img = overlay_img.resize(base_img.size, resample=Image.LANCZOS)
         final_img = Image.alpha_composite(base_img, overlay_img)
         final_image_path = f"final_{os.path.splitext(os.path.basename(base_image_path))[0]}.png"
-        final_img.save(final_image_path, format="PNG", optimize=True)
+        # ذخیره تصویر نهایی به صورت PNG بدون تبدیل به RGB و بدون استفاده از optimize
+        final_img.save(final_image_path, format="PNG")
         print(f"[INFO] تصویر نهایی ذخیره شد: {final_image_path}")
         return final_image_path
     except Exception as e:
