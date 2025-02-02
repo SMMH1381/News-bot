@@ -26,9 +26,9 @@ tehran_tz = pytz.timezone("Asia/Tehran")
 now_tehran = datetime.now(tehran_tz)
 today_date = now_tehran.date()
 yesterday_date = today_date - timedelta(days=1)
-# زمان شروع جستجو ثابت: ساعت 22:00 روز قبل
-base_start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(22, 0)))
-# متغیر end_time دیگر به صورت ثابت تعریف نمی‌شود.
+# زمان شروع جستجو ثابت: ساعت 20:00 روز قبل
+base_start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(20, 0)))
+# توجه: زمان پایان بازه به صورت داینامیک (زمان اجرای کد) تعیین می‌شود.
 
 def parse_datetime(datetime_str):
     """
@@ -63,6 +63,7 @@ def scrape_channel(channel_username, required_hashtag, start_time_range, end_tim
     if response.status_code != 200:
         print(f"[ERROR] دریافت صفحه {url} با وضعیت {response.status_code} مواجه شد.")
         return None
+
     soup = BeautifulSoup(response.text, "html.parser")
     
     posts = soup.find_all("div", class_="tgme_widget_message_wrap")
@@ -150,15 +151,30 @@ async def send_photo(image_path):
 
 async def main():
     print("[INFO] اجرای برنامه آغاز شد.")
-    # محاسبه زمان پایان بازه به عنوان لحظه اجرای کد
-    current_time = datetime.now(tehran_tz)
-    print(f"[INFO] بازه جستجو: از {base_start_time} تا {current_time}")
-    image_path = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG, base_start_time, current_time)
+    # تعیین زمان پایان تلاش: حداکثر تا ساعت 03:02 به وقت تهران
+    stop_time = tehran_tz.localize(datetime.combine(today_date, time(3, 2)))
+    attempt = 0
+    image_path = None
+
+    while True:
+        attempt += 1
+        current_time = datetime.now(tehran_tz)
+        print(f"[INFO] تلاش شماره {attempt}: بازه جستجو از {base_start_time} تا {current_time}")
+        image_path = scrape_channel(SOURCE_CHANNEL_1, SOURCE1_HASHTAG, base_start_time, current_time)
+        if image_path:
+            print(f"[INFO] تصویر مورد نظر در تلاش شماره {attempt} پیدا شد.")
+            break
+        if current_time >= stop_time:
+            print(f"[INFO] زمان اجرای کد به ساعت 03:02 رسیده است. پایان تلاش‌ها.")
+            break
+        print(f"[INFO] در تلاش شماره {attempt} تصویر پیدا نشد. 5 دقیقه صبر می‌کنیم.")
+        await asyncio.sleep(5 * 60)
+
     if image_path:
         final_image_path = composite_image(image_path, OVERLAY_IMAGE_PATH)
         await send_photo(final_image_path)
     else:
-        print("[INFO] تصویر مورد نظر پیدا نشد؛ بنابراین عملی انجام نخواهد شد.")
+        print("[INFO] پس از پایان دوره (تا 03:02)، تصویر مورد نظر پیدا نشد.")
 
 if __name__ == "__main__":
     asyncio.run(main())
