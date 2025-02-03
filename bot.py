@@ -10,7 +10,7 @@ from PIL import Image
 from telegram import Bot
 
 # === تنظیمات ثابت ===
-SOURCE1_HASHTAG = "#خبرنامه_افسران"
+SOURCE1_HASHTAG = "#بیسیم_نامه"
 TARGET_CAPTION = "♨️ امروز در ایران و جهان چه گذشت؟\nمنتخب مهم‌ترین اخبار ۲۴ ساعت گذشته\n\nبرای دسترسی به شماره‌های قبلی این خبرنامه، هشتگ زیر را لمس کنید:\n#خبرنامه@SumsTweetMD"
 
 # === دریافت متغیرهای محیطی (secrets) ===
