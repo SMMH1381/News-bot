@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta, time
 import pytz
 from PIL import Image
+from fractions import Fraction
 from telegram import Bot
 
 # === تنظیمات ثابت ===
@@ -27,7 +28,8 @@ today_date = now_tehran.date()
 yesterday_date = today_date - timedelta(days=1)
 base_start_time = tehran_tz.localize(datetime.combine(yesterday_date, time(20, 0)))
 
-CROP_HEIGHT = 224  # مقدار پیکسلی که از بالای تصویر کراپ می‌شود
+# نسبت دقیق کراپ: بر اساس نمونه‌ها، نسبت = 224/1053
+CROP_RATIO = Fraction(224, 1053)
 
 def scrape_channel(channel_username, start_time_range, end_time_range):
     url = f"https://t.me/s/{channel_username.strip('@')}"
@@ -85,14 +87,16 @@ def scrape_channel(channel_username, start_time_range, end_time_range):
     print("[INFO] هیچ پستی با مشخصات داده شده یافت نشد.")
     return None
 
-def crop_image(image_path, crop_height):
+def crop_image(image_path, crop_ratio):
     try:
         img = Image.open(image_path)
         width, height = img.size
-        cropped_img = img.crop((0, crop_height, width, height))
+        # محاسبه دقیق تعداد پیکسل‌های کراپ شده به صورت نسبت دقیق
+        crop_pixels = int(height * crop_ratio)
+        cropped_img = img.crop((0, crop_pixels, width, height))
         cropped_path = "cropped_image.png"
         cropped_img.save(cropped_path, format="PNG", optimize=True)
-        print(f"[INFO] تصویر پس از کراپ در: {cropped_path}")
+        print(f"[INFO] تصویر پس از کراپ در: {cropped_path} - اندازه اصلی: {width}x{height}, کراپ از بالا: {crop_pixels} پیکسل، اندازه جدید: {width}x{(height - crop_pixels)}")
         return cropped_path
     except Exception as e:
         print(f"[ERROR] در برش تصویر: {e}")
@@ -127,7 +131,7 @@ async def main():
         await asyncio.sleep(5 * 60)
 
     if image_path:
-        cropped_image_path = crop_image(image_path, CROP_HEIGHT)
+        cropped_image_path = crop_image(image_path, CROP_RATIO)
         await send_photo(cropped_image_path)
     else:
         print("[INFO] پس از پایان دوره (تا 03:02)، تصویر مورد نظر پیدا نشد.")
