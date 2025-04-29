@@ -3,7 +3,7 @@ name: Telegram Bot Automation
 on:
   schedule:
     # 20:31 UTC معادل 00:01 به وقت تهران است.
-    - cron: "31 20 * * *"
+    - cron: "# # * * *"
   workflow_dispatch:
 
 jobs:
